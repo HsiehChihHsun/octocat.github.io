@@ -1,0 +1,8 @@
+name: Hsieh Chih Hsun
+
+nation: Taiwan
+
+academic degree: Master of Physics
+
+interest: Vibe coding, photography, travel
+
