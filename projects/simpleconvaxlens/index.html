@@ -18,13 +18,50 @@
 
         #info {
             position: absolute;
-            top: 20px;
-            left: 20px;
-            color: #E2E8F0;
-            font-family: 'Segoe UI', sans-serif;
+            top: 0;
+            left: 0;
+            width: 100%;
             pointer-events: none;
-            user-select: none;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            /* 讓點擊穿透空白區域 */
+            display: flex;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .instruction {
+            background-color: rgba(26, 27, 32, 0.85);
+            padding: 8px 24px;
+            border-radius: 0 0 16px 16px;
+            /* 下方圓角 */
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: none;
+            backdrop-filter: blur(12px);
+            pointer-events: auto;
+
+            /* 文字排版設定 */
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            font-family: 'Segoe UI', sans-serif;
+            font-size: 13px;
+            /* 較小的字體 */
+            color: #E2E8F0;
+            line-height: 1.5;
+            text-align: center;
+        }
+
+        .title-text {
+            font-weight: bold;
+            color: #FFFFFF;
+            font-size: 14px;
+            margin-right: 4px;
+        }
+
+        .separator {
+            color: rgba(255, 255, 255, 0.2);
+            font-size: 10px;
         }
 
         #controls {
@@ -58,19 +95,10 @@
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
         }
 
-        .instruction {
-            background-color: rgba(26, 27, 32, 0.8);
-            padding: 20px;
-            border-radius: 16px;
-            max-width: 320px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(12px);
-        }
-
         .highlight-text {
             color: #FFBF00;
             font-weight: bold;
-            text-shadow: 0 0 10px rgba(255, 191, 0, 0.5);
+            text-shadow: 0 0 8px rgba(255, 191, 0, 0.4);
         }
     </style>
 </head>
@@ -79,33 +107,25 @@
 
     <div id="info">
         <div class="instruction">
-            <h1 class="text-2xl mb-3 font-bold text-white tracking-wide">凸透鏡成像實驗</h1>
-            <div class="space-y-2">
-                <p class="text-sm text-gray-300 flex items-start">
-                    <span class="mr-2 opacity-70">1.</span>
-                    <span>拖曳樹上的 <span class="highlight-text">發光點</span>。</span>
-                </p>
-                <p class="text-sm text-gray-300 flex items-start">
-                    <span class="mr-2 opacity-70">2.</span>
-                    <span>觀察高亮度的光路變化。</span>
-                </p>
-                <p class="text-sm text-gray-300 flex items-start">
-                    <span class="mr-2 opacity-70">3.</span>
-                    <span>琥珀金代表樹幹光，螢光綠代表樹葉光。</span>
-                </p>
-            </div>
+            <span class="title-text">凸透鏡成像實驗</span>
+            <span class="separator">|</span>
+            <span>1. 拖曳樹上的 <span class="highlight-text">發光點</span></span>
+            <span class="separator">|</span>
+            <span>2. 觀察高亮度的光路變化</span>
+            <span class="separator">|</span>
+            <span>3. 琥珀金代表樹幹光，螢光綠代表樹葉光</span>
         </div>
     </div>
 
     <div id="controls">
-        <button class="btn" id="resetBtn">重設屏幕</button>
+        <button class="btn" id="resetBtn">重設視角</button>
     </div>
 
     <script>
         // --- 全域變數 ---
         let scene, camera, renderer, controls;
         let treePlane, imageTreePlane, lens, screenMesh;
-        let sourceLightPoint, sourceGlow; // 新增 glow
+        let sourceLightPoint, sourceGlow;
         let axisLine, imagingLine;
 
         let obliqueCone1, obliqueCone2;
@@ -136,7 +156,6 @@
 
         /**
          * 自定義「斜圓錐」類別 (視覺優化版)
-         * 特點：包含低透明度的填充(Mesh) 與 高亮度的邊框(Lines)
          */
         class ObliqueConeMesh {
             constructor(lensCenter, lensRadius, color) {
@@ -167,16 +186,14 @@
                     opacity: 0.0, // 初始隱藏
                     side: THREE.DoubleSide,
                     depthWrite: false,
-                    blending: THREE.AdditiveBlending // 光線疊加變亮
+                    blending: THREE.AdditiveBlending
                 });
 
                 this.mesh = new THREE.Mesh(geometry, fillMaterial);
                 this.mesh.frustumCulled = false;
 
                 // 2. 邊框線條 (Stroke Lines) - 高透明度
-                // 包含：底座圓圈 + 8條從尖端射出的光束線
                 const lineGeometry = new THREE.BufferGeometry();
-                // 預估頂點數：圓周(segments+1) + 8條光束(每條2點)
                 const lineCount = (this.segments + 1) + (8 * 2);
                 const linePositions = new Float32Array(lineCount * 3);
                 lineGeometry.setAttribute('position', new THREE.BufferAttribute(linePositions, 3));
@@ -186,7 +203,7 @@
                     transparent: true,
                     opacity: 0.0,
                     blending: THREE.AdditiveBlending,
-                    linewidth: 1 // WebGL 限制通常為 1，但靠顏色亮度補償
+                    linewidth: 1
                 });
 
                 this.lines = new THREE.LineSegments(lineGeometry, lineMaterial);
@@ -218,7 +235,7 @@
                 const linePos = this.lines.geometry.attributes.position.array;
                 let lPtr = 0;
 
-                // 1. 底座圓圈 (用 LineSegments 模擬 LineLoop: i->i+1)
+                // 1. 底座圓圈
                 for (let i = 0; i < this.segments; i++) {
                     const v1 = this.baseVertices[i];
                     const v2 = this.baseVertices[i + 1];
@@ -227,11 +244,10 @@
                     linePos[lPtr++] = v2.x; linePos[lPtr++] = v2.y; linePos[lPtr++] = v2.z;
                 }
 
-                // 2. 光束射線 (Ray Lines) - 每隔 8 個 segment 畫一條
+                // 2. 光束射線
                 const rayInterval = Math.floor(this.segments / 8);
                 for (let i = 0; i < this.segments; i += rayInterval) {
                     const vBase = this.baseVertices[i];
-                    // Tip -> Base
                     linePos[lPtr++] = tipPosition.x; linePos[lPtr++] = tipPosition.y; linePos[lPtr++] = tipPosition.z;
                     linePos[lPtr++] = vBase.x; linePos[lPtr++] = vBase.y; linePos[lPtr++] = vBase.z;
                 }
@@ -240,9 +256,7 @@
             }
 
             setOpacity(opacity) {
-                // 填充透明度較低 (約 20% 的輸入值)
                 this.mesh.material.opacity = opacity * 0.2;
-                // 線條透明度較高 (約 100% 的輸入值，讓邊框清晰)
                 this.lines.material.opacity = opacity;
             }
 
@@ -267,14 +281,12 @@
             camera.position.set(25, 15, 25);
             camera.lookAt(0, 0, 0);
 
-            // 3. 渲染器 (高品質)
+            // 3. 渲染器
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
-            // 開啟 sRGB 編碼以獲得更正確的顏色顯示
             renderer.outputEncoding = THREE.sRGBEncoding;
 
-            // 陰影設定
             renderer.shadowMap.enabled = true;
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -287,11 +299,10 @@
             controls.minDistance = 10;
             controls.maxDistance = 60;
 
-            // 5. 燈光 (調整為更有氛圍的燈光)
+            // 5. 燈光
             const ambientLight = new THREE.AmbientLight(0x404040, 2);
             scene.add(ambientLight);
 
-            // 主光 (冷色調)
             const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
             dirLight.position.set(10, 20, 10);
             dirLight.castShadow = true;
@@ -300,14 +311,13 @@
             dirLight.shadow.bias = -0.0001;
             scene.add(dirLight);
 
-            // 補光 (暖色調，增加層次)
             const pointLight = new THREE.PointLight(0x6688cc, 0.5);
             pointLight.position.set(-20, 10, -20);
             scene.add(pointLight);
 
             // --- 建立物體 ---
 
-            // A. 鏡軸 (優化線條質感)
+            // A. 鏡軸
             const axisGeo = new THREE.BufferGeometry().setFromPoints([
                 new THREE.Vector3(0, 0, OBJECT_Z + 10),
                 new THREE.Vector3(0, 0, IMAGE_Z - 10)
@@ -323,14 +333,14 @@
             axisLine.computeLineDistances();
             scene.add(axisLine);
 
-            // B. 凸透鏡 (玻璃質感優化)
+            // B. 凸透鏡
             const lensGeo = new THREE.CylinderGeometry(LENS_RADIUS, LENS_RADIUS, 0.6, 64);
             lensGeo.rotateX(Math.PI / 2);
             const lensMat = new THREE.MeshPhysicalMaterial({
                 color: COLORS.lensTint,
                 metalness: 0.0,
                 roughness: 0.0,
-                transmission: 0.95, // 極高透光
+                transmission: 0.95,
                 thickness: 2.0,
                 transparent: true,
                 opacity: 0.3,
@@ -343,7 +353,6 @@
             lens.position.set(0, 0, LENS_Z);
             scene.add(lens);
 
-            // 透鏡邊框 (金屬感)
             const rimGeo = new THREE.TorusGeometry(LENS_RADIUS, 0.15, 16, 100);
             const rimMat = new THREE.MeshStandardMaterial({
                 color: 0x8899AA,
@@ -358,11 +367,10 @@
             treePlane.position.set(0, 1, OBJECT_Z);
             scene.add(treePlane);
 
-            // D. 屏幕 (磨砂玻璃質感)
+            // D. 屏幕
             createScreenMesh();
 
-            // E. 光源點 (燈泡發光效果)
-            // 核心實體
+            // E. 光源點
             const lightGeo = new THREE.SphereGeometry(0.2, 32, 32);
             const lightMat = new THREE.MeshBasicMaterial({ color: 0xFFFFFF });
             sourceLightPoint = new THREE.Mesh(lightGeo, lightMat);
@@ -370,7 +378,6 @@
             sourceLightPoint.renderOrder = 999;
             scene.add(sourceLightPoint);
 
-            // 光暈 (Glow Sprite)
             const glowMap = createGlowTexture();
             const glowMat = new THREE.SpriteMaterial({
                 map: glowMap,
@@ -381,17 +388,17 @@
                 depthWrite: false
             });
             sourceGlow = new THREE.Sprite(glowMat);
-            sourceGlow.scale.set(3, 3, 1); // 光暈比實體大
-            sourceLightPoint.add(sourceGlow); // 綁定在光點上
+            sourceGlow.scale.set(3, 3, 1);
+            sourceLightPoint.add(sourceGlow);
 
-            // G. 光錐 (使用新類別)
+            // G. 光錐
             obliqueCone1 = new ObliqueConeMesh(new THREE.Vector3(0, 0, LENS_Z), LENS_RADIUS, COLORS.trunkLight);
             obliqueCone1.addTo(scene);
 
             obliqueCone2 = new ObliqueConeMesh(new THREE.Vector3(0, 0, LENS_Z), LENS_RADIUS, COLORS.trunkLight);
             obliqueCone2.addTo(scene);
 
-            // H. 成像輔助線 (更細緻)
+            // H. 成像輔助線
             const imagingLineGeo = new THREE.BufferGeometry();
             imagingLineGeo.setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0)]);
             const imagingLineMat = new THREE.LineDashedMaterial({
@@ -405,25 +412,23 @@
             imagingLine = new THREE.Line(imagingLineGeo, imagingLineMat);
             scene.add(imagingLine);
 
-            // I. 倒立樹的像 (Ghost Image)
+            // I. 倒立樹的像
             imageTreePlane = treePlane.clone();
             imageTreePlane.material = treePlane.material.clone();
             imageTreePlane.material.color.setHex(0xFFFFFF);
             imageTreePlane.material.depthWrite = false;
             imageTreePlane.material.opacity = 0.25;
-            imageTreePlane.material.blending = THREE.AdditiveBlending; // 讓像看起來像投影光
-            imageTreePlane.renderOrder = 2; // 確保最後繪製
+            imageTreePlane.material.blending = THREE.AdditiveBlending;
+            imageTreePlane.renderOrder = 2;
 
             imageTreePlane.position.set(0, -1, IMAGE_Z);
             imageTreePlane.rotation.z = Math.PI;
             imageTreePlane.position.z = IMAGE_Z + 0.1;
             scene.add(imageTreePlane);
 
-            // 初始化互動
             raycaster = new THREE.Raycaster();
             mouse = new THREE.Vector2();
 
-            // Event Listeners
             window.addEventListener('resize', onWindowResize, false);
             renderer.domElement.addEventListener('mousemove', onMouseMove, false);
             renderer.domElement.addEventListener('mousedown', onMouseDown, false);
@@ -434,10 +439,17 @@
             renderer.domElement.addEventListener('touchend', onMouseUp, false);
             renderer.domElement.addEventListener('touchcancel', onMouseUp, false);
 
-            document.getElementById('resetBtn').addEventListener('click', clearScreen);
+            document.getElementById('resetBtn').addEventListener('click', resetCamera);
         }
 
-        // 創建發光紋理
+        // 重設視角的函式
+        function resetCamera() {
+            camera.position.set(25, 15, 25);
+            camera.lookAt(0, 0, 0);
+            controls.target.set(0, 0, 0);
+            controls.update();
+        }
+
         function createGlowTexture() {
             const canvas = document.createElement('canvas');
             canvas.width = 64; canvas.height = 64;
@@ -459,25 +471,22 @@
 
             ctx.clearRect(0, 0, 1024, 2048);
 
-            // 1. 樹幹 (使用更飽和的顏色以配合發光)
+            // 1. 樹幹
             ctx.fillStyle = '#8B4513';
             ctx.fillRect(472, 1200, 80, 600);
 
-            // 2. 樹葉 (深綠色，作為基底)
+            // 2. 樹葉
             ctx.fillStyle = '#116611';
 
-            // 下層
             ctx.beginPath();
             ctx.moveTo(212, 1200); ctx.lineTo(812, 1200); ctx.lineTo(512, 600);
             ctx.fill();
 
-            // 中層
             ctx.fillStyle = '#228822';
             ctx.beginPath();
             ctx.moveTo(272, 800); ctx.lineTo(752, 800); ctx.lineTo(512, 300);
             ctx.fill();
 
-            // 上層
             ctx.fillStyle = '#33AA33';
             ctx.beginPath();
             ctx.moveTo(332, 400); ctx.lineTo(692, 400); ctx.lineTo(512, 0);
@@ -487,7 +496,6 @@
 
             const texture = new THREE.CanvasTexture(canvas);
             texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-            // sRGB 編碼
             texture.encoding = THREE.sRGBEncoding;
 
             const geometry = new THREE.PlaneGeometry(6, 12);
@@ -516,14 +524,11 @@
             screenTexture.encoding = THREE.sRGBEncoding;
 
             const geometry = new THREE.PlaneGeometry(20, 20);
-            // 磨砂質感屏幕: 使用 MeshPhysicalMaterial 模擬
-            // 這裡為了保持 Canvas 繪圖可見，我們使用混合方案：
-            // MeshBasicMaterial 負責顯示繪圖內容，但調整透明度
             const material = new THREE.MeshBasicMaterial({
                 map: screenTexture,
                 side: THREE.DoubleSide,
                 transparent: true,
-                opacity: 0.95, // 稍微不透，讓白色背景明顯
+                opacity: 0.95,
                 depthWrite: false
             });
 
@@ -535,20 +540,16 @@
 
         function clearScreen() {
             if (!screenCtx) return;
-            // 磨砂玻璃色：微帶灰藍的半透明白
             screenCtx.fillStyle = 'rgba(240, 245, 255, 0.2)';
             screenCtx.clearRect(0, 0, screenCanvas.width, screenCanvas.height);
             screenCtx.fillRect(0, 0, screenCanvas.width, screenCanvas.height);
 
-            // 邊框
             screenCtx.strokeStyle = 'rgba(255,255,255,0.3)';
             screenCtx.lineWidth = 20;
             screenCtx.strokeRect(0, 0, screenCanvas.width, screenCanvas.height);
 
             if (screenTexture) screenTexture.needsUpdate = true;
         }
-
-        // --- 互動邏輯 ---
 
         function updateLightInteraction(clientX, clientY) {
             mouse.x = (clientX / window.innerWidth) * 2 - 1;
@@ -577,26 +578,20 @@
                         sourceLightPoint.position.copy(point);
                         sourceLightPoint.position.z = OBJECT_Z - 0.2;
 
-                        // 顏色判斷 (High Contrast)
                         let coneHex = COLORS.trunkLight;
-                        // 如果 G 明顯大於 R，判定為樹葉
                         if (g > r + 20) {
                             coneHex = COLORS.leafLight;
                         }
 
-                        // 更新光點 Glow 顏色
                         sourceGlow.material.color.setHex(coneHex);
 
-                        // 光源 -> 透鏡
                         obliqueCone1.updateTip(sourceLightPoint.position);
                         obliqueCone1.setColor(coneHex);
 
-                        // 像的位置
                         const imageX = -point.x;
                         const imageY = -point.y;
                         const imagePos = new THREE.Vector3(imageX, imageY, IMAGE_Z);
 
-                        // 透鏡 -> 像
                         obliqueCone2.updateTip(imagePos);
                         obliqueCone2.setColor(coneHex);
 
@@ -605,12 +600,10 @@
                         imagingLine.visible = true;
 
                         if (isDragging) {
-                            // 拖曳時：光路清晰
-                            obliqueCone1.setOpacity(1.0); // 傳入 1.0，內部會轉為 20% fill, 100% stroke
+                            obliqueCone1.setOpacity(1.0);
                             obliqueCone2.setOpacity(1.0);
                             paintOnScreen(imageX, imageY, coneHex);
                         } else {
-                            // 懸停時：光路微亮
                             obliqueCone1.setOpacity(0.4);
                             obliqueCone2.setOpacity(0.4);
                         }
@@ -638,16 +631,13 @@
             const g = (colorHex >> 8) & 255;
             const b = colorHex & 255;
 
-            // 使用 Lighter 模式讓顏色疊加更亮
-            ctx.globalCompositeOperation = 'screen'; // 或 lighter
-            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.15)`; // 低透明度疊加
+            ctx.globalCompositeOperation = 'screen';
+            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.15)`;
             ctx.fill();
-            ctx.globalCompositeOperation = 'source-over'; // 還原
+            ctx.globalCompositeOperation = 'source-over';
 
             screenTexture.needsUpdate = true;
         }
-
-        // --- 事件處理 ---
 
         function onMouseDown(event) {
             event.preventDefault();
@@ -700,9 +690,7 @@
             requestAnimationFrame(animate);
             controls.update();
 
-            // 讓光暈永遠面向相機 (雖然 Sprite 預設就是這樣，但確保萬一)
             if (sourceLightPoint.visible) {
-                // 簡單的 pulse 動畫
                 const scale = 3 + Math.sin(Date.now() * 0.005) * 0.2;
                 sourceGlow.scale.set(scale, scale, 1);
             }
