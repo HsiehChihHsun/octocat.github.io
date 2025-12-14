@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Black Hole Simulation</title>
+    <link rel="stylesheet" href="style.css">
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;600&display=swap');
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    <div id="info">
+        <h1>Interstellar Black Hole</h1>
+        <p>Interactive Real-time Ray Marching Simulation</p>
+        <p class="controls">Left Click + Drag to Rotate | Scroll to Zoom</p>
+    </div>
+    <script type="module" src="main.js"></script>
+</body>
+</html>
