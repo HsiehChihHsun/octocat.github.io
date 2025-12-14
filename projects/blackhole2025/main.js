@@ -112,6 +112,7 @@ const fragmentShader = `
         
         // 採樣噪聲
         // 降低垂直方向的噪聲頻率以減少鋸齒 h * 10.0 -> h * 4.0
+        // Use + animation for Counter-Clockwise visual rotation (matches CCW physics)
         vec3 noisePos = vec3(r * 2.0, angle * 3.0 + animation, h * 4.0);
         float density = fbm(noisePos);
         
@@ -127,9 +128,9 @@ const fragmentShader = `
     // lightDir: 光線方向
     // pos: 採樣點位置
     float getDopplerFactor(vec3 lightDir, vec3 pos) {
-        // 吸積盤物質旋轉速度向量 (逆時針)
-        // 在 disk 平面上，切線方向為 (-z, 0, x)
-        vec3 vel = normalize(vec3(-pos.z, 0.0, pos.x));
+        // 吸積盤物質旋轉速度向量 (逆時針 Counter-Clockwise)
+        // 在 disk 平面上，切線方向為 (z, 0, -x)
+        vec3 vel = normalize(vec3(pos.z, 0.0, -pos.x));
         
         // 計算視線與速度的點積
         // lightDir 是從攝像機發出的，所以 lightDir 指向物體。
