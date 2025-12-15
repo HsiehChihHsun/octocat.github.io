@@ -1,0 +1,129 @@
+:root {
+    --bg-color: #1a1a1a;
+    --text-color: #e0e0e0;
+    --panel-bg: #2d2d2d;
+    --accent-color: #64b5f6;
+}
+
+body,
+html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow: hidden;
+    /* Prevent scrolling on body */
+}
+
+#app-container {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+}
+
+#app-title {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 16px;
+    font-weight: 300;
+    pointer-events: none;
+    z-index: 10;
+    font-family: 'Segoe UI', sans-serif;
+    letter-spacing: 1px;
+}
+
+#canvas-3d {
+    flex: 1;
+    /* Takes 50% roughly */
+    position: relative;
+    background: #000;
+}
+
+#charts-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #111;
+    border-left: 1px solid #444;
+    overflow: hidden;
+}
+
+#charts-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    gap: 5px;
+    overflow-y: auto;
+}
+
+.chart-wrapper {
+    flex: 1;
+    /* Distribute height equally */
+    position: relative;
+    background: #222;
+    border: 1px solid #333;
+    min-height: 0;
+    /* Important for flex child scrolling/sizing */
+    display: flex;
+}
+
+.chart-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+#controls {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 10px 20px;
+    border-radius: 8px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    z-index: 100;
+    border: 1px solid #555;
+}
+
+button {
+    background: #444;
+    color: white;
+    border: 1px solid #666;
+    padding: 5px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+button:hover {
+    background: #555;
+}
+
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    color: #ccc;
+    border-left: 1px solid #555;
+    padding-left: 10px;
+}
+
+input[type="range"] {
+    width: 100px;
+    accent-color: var(--accent-color);
+}
+
+#time-display {
+    font-family: monospace;
+    font-size: 16px;
+    min-width: 100px;
+}
