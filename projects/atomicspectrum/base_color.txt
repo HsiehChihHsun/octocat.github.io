@@ -1,0 +1,94 @@
+以下為光源發光時未色散的混合色，之後在城市裡稱為該元素的基本色(base_color)
+
+
+
+這是一個關於**「加法混色 (Additive Color Mixing)」**的問題。在電腦螢幕（以及物理光學）中，光源的顏色其實就是它所包含的所有單色光（譜線）的總和。
+
+既然您已經有了「波長」與「強度」的數據，您不需要人工去猜測那個顏色，而是可以透過程式**自動計算**出來。這會讓您的模擬器非常酷，因為當您調整某條譜線的強度時，光源的整體顏色也會跟著即時改變！
+
+
+---
+
+### 演算法自動疊加法 (推薦：最科學)
+
+原理很簡單：將每一條譜線轉換出的 R、G、B 數值，依照其強度加總起來，最後再做一次「正規化 (Normalization)」以防止數值爆掉（變成全白）。
+
+#### 核心邏輯步驟：
+
+1. 準備三個變數：`Total_R`, `Total_G`, `Total_B`，初始值都設為 0。
+2. 跑迴圈讀取該物質的所有譜線。
+3. 針對每一條線：
+* 算出它的 RGB 基色（利用上一輪提供的 `spectralColorConverter` 邏輯）。
+* 將 `RGB * Intensity` 加到 `Total` 變數中。
+
+
+4. **關鍵步驟 - 正規化：** 迴圈結束後，找出 (R, G, B) 中最大的那個值，將所有數值等比例縮放，讓最大值等於 255。這樣保證光源看起來是「亮」的，且色調（Hue）正確。
+
+#### JavaScript 實作範例
+
+這段程式碼可以直接搭配上一輪的 CSV 資料使用：
+
+```javascript
+/**
+ * 計算複色光（光源整體顏色）
+ * @param {Array} lines - 包含該元素所有譜線的陣列 [{wavelength: 589, intensity: 1.0}, ...]
+ * @returns {string} CSS RGB 顏色字串
+ */
+function calculateMixedColor(lines) {
+    let totalR = 0;
+    let totalG = 0;
+    let totalB = 0;
+
+    // 1. 累加所有譜線的貢獻
+    lines.forEach(line => {
+        // 這裡呼叫我們上一輪寫的核心演算法拿到 RGB (範圍 0-1)
+        // 注意：這裡 dynamicRange 設為 1.0 即可，因為我們要算的是物理總和
+        let rgb = getBaseRGB(line.wavelength); 
+        
+        totalR += rgb.r * line.intensity;
+        totalG += rgb.g * line.intensity;
+        totalB += rgb.b * line.intensity;
+    });
+
+    // 2. 處理全黑的情況 (例如沒有任何可見譜線)
+    if (totalR === 0 && totalG === 0 && totalB === 0) {
+        return "rgb(0, 0, 0)"; // 黑色
+    }
+
+    // 3. 正規化 (Normalization)
+    // 找出三個通道中最強的一個，將其拉大到 255，其他依比例放大
+    // 這樣做是為了模擬「光源」通常都是高亮度的特性
+    const maxVal = Math.max(totalR, totalG, totalB);
+    const scale = 255 / maxVal;
+
+    const finalR = Math.round(totalR * scale);
+    const finalG = Math.round(totalG * scale);
+    const finalB = Math.round(totalB * scale);
+
+    return `rgb(${finalR}, ${finalG}, ${finalB})`;
+}
+
+// --- 輔助函式：這是上一輪演算法的簡化版，只回傳純 RGB 比例 (0-1) ---
+function getBaseRGB(wavelength) {
+    let R = 0, G = 0, B = 0;
+    // ... (這裡填入上一輪 Dan Bruton 的 if-else 判斷，但不做強度處理) ...
+    // 為了節省篇幅，這裡假設您已經將上一輪的 R, G, B 計算邏輯封裝好了
+    // 簡單示範 589nm (黃光)
+    if (wavelength >= 580 && wavelength < 645) {
+        R = 1.0;
+        G = -(wavelength - 645) / (645 - 580);
+        B = 0.0;
+    }
+    // ... 其他波段 ...
+    return { r: R, g: G, b: B };
+}
+
+```
+
+#### 預期效果
+
+* **鈉 (Na):** 雙黃線最強 -> 算出來會是 **#FFD700 (純金黃色)**。
+* **氫 (H):** 有紅(656)、青(486)、藍紫(434) -> 混合後會變成一種 **淡淡的粉紫色 (Pale Lavender)**，這非常符合氫氣放電管的真實顏色！
+* **汞 (Hg):** 藍綠線與紫線混合 -> 會呈現 **青藍色 (Cyan-Blue)**。
+
+---

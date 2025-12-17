@@ -1,0 +1,152 @@
+
+1. **物理轉顏色：** 使用著名的 **Dan Bruton 演算法**（近似法），將波長 (nm) 轉換為 RGB 原始值。
+2. **感知亮度處理：** 結合您提到的「強度 (Intensity)」與「動態範圍 (Dynamic Range)」，透過**非線性映射（Gamma Correction 概念）**來調整最終的顯示亮度。
+
+以下是可以直接用於網頁（JavaScript）的完整演算法與邏輯解說。
+
+---
+
+### 1. 核心邏輯公式
+
+我們將最終顯示的顏色定義為 `RGBA(r, g, b, alpha)`，其中 `alpha` (透明度) 負責控制光的強弱。
+
+#### A. 動態範圍壓縮公式 (Dynamic Range Compression)
+
+由於光譜線強弱懸殊（最強線可能是最弱線的 1000 倍），線性顯示會導致弱線消失。我們使用 **冪次函數 (Power Law)** 來壓縮數據：
+
+* I_{raw}: 您資料庫中的原始強度 (0.0 ~ 1.0)。
+* dyn: 動態範圍參數 (Dynamic Range Parameter)。
+* 若 dyn = 1: 線性顯示 (真實物理比例)。
+* 若 dyn = 2: 相當於開根號，弱線會變明顯。
+* 若 dyn = 5 \sim 10: 極強的壓縮，極微弱的雜訊譜線也能被看見（類似夜視鏡效果）。
+
+
+
+#### B. 視覺邊緣衰減 (Vision Attenuation)
+
+人眼對 380nm (極紫) 和 750nm (極紅) 的敏感度很低。Bruton 演算法包含一個 `factor`，讓光譜邊緣自然變暗，不會突然「截斷」。
+
+---
+
+### 2. JavaScript 實作程式碼
+
+您可以直接將此函式複製到您的專案中。輸入波長、強度與動態範圍參數，它會回傳 CSS 可用的顏色字串。
+
+```javascript
+/**
+ * 將波長與強度轉換為 CSS 顏色格式
+ * @param {number} wavelength - 波長 (nm)，範圍 380 - 750
+ * @param {number} intensity - 原始強度 (0.0 - 1.0)
+ * @param {number} dynamicRange - 動態範圍參數 (建議 1.0 - 5.0，數值越大，弱光越明顯)
+ * @returns {string} CSS顏色字串 e.g., "rgba(255, 0, 0, 0.5)"
+ */
+function spectralColorConverter(wavelength, intensity, dynamicRange = 1.0) {
+    let R, G, B, alpha;
+
+    // 1. 根據波長區段決定 RGB 比例 (Dan Bruton Algorithm 近似法)
+    if (wavelength >= 380 && wavelength < 440) {
+        R = -(wavelength - 440) / (440 - 380);
+        G = 0.0;
+        B = 1.0;
+    } else if (wavelength >= 440 && wavelength < 490) {
+        R = 0.0;
+        G = (wavelength - 440) / (490 - 440);
+        B = 1.0;
+    } else if (wavelength >= 490 && wavelength < 510) {
+        R = 0.0;
+        G = 1.0;
+        B = -(wavelength - 510) / (510 - 490);
+    } else if (wavelength >= 510 && wavelength < 580) {
+        R = (wavelength - 510) / (580 - 510);
+        G = 1.0;
+        B = 0.0;
+    } else if (wavelength >= 580 && wavelength < 645) {
+        R = 1.0;
+        G = -(wavelength - 645) / (645 - 580);
+        B = 0.0;
+    } else if (wavelength >= 645 && wavelength <= 750) {
+        R = 1.0;
+        G = 0.0;
+        B = 0.0;
+    } else {
+        R = 0.0; G = 0.0; B = 0.0; // 超出可見光範圍
+    }
+
+    // 2. 計算視覺邊緣衰減 (讓光譜兩端自然變暗)
+    // 380-420nm 和 700-750nm 敏感度下降
+    let visionAttenuation = 1.0;
+    if (wavelength >= 380 && wavelength < 420) {
+        visionAttenuation = 0.3 + 0.7 * (wavelength - 380) / (420 - 380);
+    } else if (wavelength >= 420 && wavelength < 700) {
+        visionAttenuation = 1.0;
+    } else if (wavelength >= 700 && wavelength <= 750) {
+        visionAttenuation = 0.3 + 0.7 * (750 - wavelength) / (750 - 700);
+    } else {
+        visionAttenuation = 0.0;
+    }
+
+    // 3. 應用動態範圍壓縮 (核心邏輯)
+    // 防止 intensity 為 0 或負數導致錯誤
+    const safeIntensity = Math.max(0, intensity);
+    // 指數運算：強度^(1/動態範圍)
+    const compressedIntensity = Math.pow(safeIntensity, 1 / dynamicRange);
+
+    // 4. 計算最終 Alpha 值
+    // 結合「壓縮後的強度」與「人眼邊緣衰減」
+    alpha = compressedIntensity * visionAttenuation;
+
+    // 修正 RGB 強度 (Gamma 0.8 是為了讓螢幕顯示更接近真實光譜的鮮豔度)
+    // 這一步是選擇性的，但加上去顏色會更漂亮
+    const Gamma = 0.8;
+    const R_s = Math.round(Math.pow(R * visionAttenuation, Gamma) * 255);
+    const G_s = Math.round(Math.pow(G * visionAttenuation, Gamma) * 255);
+    const B_s = Math.round(Math.pow(B * visionAttenuation, Gamma) * 255);
+    
+    // 注意：這裡我們選擇讓 RGB 保持最大鮮豔度，用 Alpha 控制亮度
+    // 如果想要發光效果，前端 CSS 建議設定 mix-blend-mode: screen;
+    
+    // 回傳 rgba 字串
+    // 為了顯示效果，R, G, B 我們使用不乘上 intensity 的基色，
+    // 把 intensity 全部交給 alpha 控制，這樣在黑色背景上疊加最自然。
+    const R_base = Math.round(R * 255);
+    const G_base = Math.round(G * 255);
+    const B_base = Math.round(B * 255);
+
+    return `rgba(${R_base}, ${G_base}, ${B_base}, ${alpha.toFixed(3)})`;
+}
+
+```
+
+---
+
+### 3. 如何在網頁前端應用這個參數？
+
+為了達到您想要的「互動資料庫」效果，建議在網頁介面上做一個 **Slider (滑桿)** 來控制 `dynamicRange` 參數。
+
+* **情境 A：真實模式 (Slider = 1.0)**
+* 使用者只能看到最強的那幾條特徵線（例如鈉的雙黃線）。
+* 教學意義：展示「為什麼我們平常只看得到這幾種顏色」。
+
+
+* **情境 B：探測模式 (Slider = 5.0)**
+* 原本看不見的微弱次級譜線紛紛浮現，主要譜線則會過曝（變全白）。
+* 教學意義：展示「其實光譜裡藏著很多細節，只是太暗了」。
+
+
+
+#### CSS 渲染小技巧
+
+因為這是「光」，在黑色背景上繪製時，請務必設定 CSS 的混合模式，這樣光線重疊處會變亮（例如紅線+綠線疊在一起變黃），而不是單純的覆蓋。
+
+```css
+.spectrum-line {
+    /* 讓光譜線像光一樣疊加 */
+    mix-blend-mode: screen; /* 或 lighter */
+    
+    /* 稍微加一點模糊，模擬光的暈開效果 */
+    filter: blur(1px); 
+}
+
+```
+
+這個演算法已經考慮了物理波長轉色、人眼邊緣衰減，以及您最需要的「強度動態範圍」，應該能完美解決您的需求。

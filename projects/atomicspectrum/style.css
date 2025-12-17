@@ -1,0 +1,212 @@
+:root {
+    --bg-color: #000000;
+    --text-color: #e0e0e0;
+    --accent-color: #4a90e2;
+    --panel-bg: rgba(20, 20, 20, 0.8);
+    --font-main: 'Outfit', sans-serif;
+}
+
+body,
+html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: var(--font-main);
+    overflow: hidden;
+    /* Prevent scrollbars */
+}
+
+.container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Canvas styling */
+#spectrumCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    /* Takes full height minus bottom bar space notionally, but we layer it */
+    z-index: 1;
+}
+
+/* Controls styling */
+.controls {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 10;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 20px;
+    background: transparent;
+    /* Remove background to avoid boxy look if items are spread */
+    pointer-events: none;
+    /* Let clicks pass through gaps */
+}
+
+.control-group {
+    pointer-events: auto;
+    /* Enable clicks on controls */
+    background: rgba(0, 0, 0, 0.7);
+    padding: 10px 15px;
+    border-radius: 8px;
+    border: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+    min-width: 150px;
+    margin-bottom: 20px;
+}
+
+.control-group:last-child {
+    margin-bottom: 0;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    font-size: 0.9em;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Title Styling */
+.app-title {
+    margin-top: 10px;
+    border-top: 1px solid #444;
+    padding-top: 8px;
+    text-align: center;
+}
+
+.title-en {
+    font-size: 0.85em;
+    color: var(--accent-color);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.title-zh {
+    font-size: 0.9em;
+    color: #ccc;
+    margin-top: 2px;
+}
+
+
+/* Custom Select styling */
+select {
+    width: 100%;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    color: white;
+    font-family: var(--font-main);
+    font-size: 1em;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.3s;
+}
+
+select:hover,
+select:focus {
+    border-color: var(--accent-color);
+}
+
+/* Range Slider styling */
+input[type=range] {
+    width: 100%;
+    background: transparent;
+    -webkit-appearance: none;
+}
+
+input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    height: 16px;
+    width: 16px;
+    border-radius: 50%;
+    background: var(--accent-color);
+    cursor: pointer;
+    margin-top: -6px;
+    box-shadow: 0 0 10px var(--accent-color);
+}
+
+input[type=range]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+}
+
+#dynamicRangeValue {
+    display: block;
+    text-align: right;
+    font-size: 0.85em;
+    color: var(--accent-color);
+    margin-top: 5px;
+}
+
+/* Bottom Spectrum Bar */
+.spectrum-bar-container {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 100px;
+    /* Allocated height */
+    z-index: 10;
+    background: linear-gradient(to top, rgba(0, 0, 0, 1), rgba(0, 0, 0, 0));
+    padding-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.spectrum-labels {
+    width: 96%;
+    /* Must match #spectrumBarCanvas width ratio */
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8em;
+    color: #666;
+    margin-bottom: 2px;
+    /* Tighter grouping */
+    font-family: monospace;
+}
+
+#spectrumBarCanvas {
+    width: 96%;
+    height: 60px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    cursor: crosshair;
+    background: black;
+}
+
+.hover-info {
+    color: var(--accent-color);
+    font-weight: bold;
+}
+
+/* Tooltip for graph */
+.tooltip {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid #444;
+    padding: 5px 10px;
+    border-radius: 4px;
+    pointer-events: none;
+    font-size: 0.8em;
+    display: none;
+}

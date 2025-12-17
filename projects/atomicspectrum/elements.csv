@@ -1,0 +1,10 @@
+element_id,name_zh,Atomic Number,favorate,description,元素類型
+H,氫,1,TRUE,宇宙中最豐富的元素...,非金屬
+He,氦,2,TRUE,惰性氣體,惰性氣體
+Li,鋰,3,TRUE,最輕的金屬,鹼金屬
+Ne,氖,10,TRUE,霓虹燈中的氣體,惰性氣體
+Na,鈉,11,TRUE,活性很強的鹼金屬,鹼金屬
+K,鉀,19,TRUE,植物生長必需,鹼金屬
+Ca,鈣,20,TRUE,骨骼和牙齒的主要成分,鹼土金屬
+Hg,汞,80,TRUE,,
+Fe,鐵,26,TRUE,最常用的結構金屬,過渡金屬
