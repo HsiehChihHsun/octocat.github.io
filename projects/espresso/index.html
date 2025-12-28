@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Espresso Harmony | 咖啡比例視覺化</title>
+    <!-- Importing Google Fonts for a Premium Look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Raleway:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="main-container">
+        <!-- Left Side: Coffee Cup Visualization -->
+        <section class="visual-section">
+            <div class="result-text" id="result-text">
+                請調整配方...
+            </div>
+            
+            <div class="cup-container">
+                <div class="cup-handle"></div>
+                <div class="cup-body">
+                    <div class="liquid foam" id="foam-layer">
+                        <span class="label">奶泡</span>
+                    </div>
+                    <div class="liquid milk" id="milk-layer">
+                         <span class="label">牛奶</span>
+                    </div>
+                    <div class="liquid espresso" id="espresso-layer">
+                         <span class="label">濃縮</span>
+                    </div>
+                </div>
+                <div class="cup-saucer"></div>
+            </div>
+        </section>
+
+        <!-- Right Side: Controls -->
+        <section class="controls-section">
+            <h1>調配您的咖啡</h1>
+            <p class="subtitle">拉動拉桿，尋找完美的黃金比例</p>
+
+            <div class="control-group">
+                <label for="espresso-range">濃縮咖啡 (Espresso)</label>
+                <div class="range-wrapper">
+                    <input type="range" id="espresso-range" min="30" max="60" value="30">
+                    <span class="value-display" id="espresso-val">30 mL</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label for="milk-range">牛奶 (Milk)</label>
+                <div class="range-wrapper">
+                    <input type="range" id="milk-range" min="0" max="300" value="0">
+                    <span class="value-display" id="milk-val">0 mL</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label for="foam-range">奶泡 (Foam)</label>
+                <div class="range-wrapper">
+                    <input type="range" id="foam-range" min="0" max="120" value="0">
+                    <span class="value-display" id="foam-val">0 mL</span>
+                </div>
+            </div>
+            
+            <div class="decorative-line"></div>
+            
+            <div class="recipe-hint">
+                <p>💡 提示：試著調出 1:1:1 的比例看看？</p>
+            </div>
+        </section>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

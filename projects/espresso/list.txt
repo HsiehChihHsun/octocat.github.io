@@ -1,0 +1,7 @@
+濃縮咖啡 (Espresso): 30ml 濃縮咖啡
+美式咖啡 (Americano): 1份濃縮 (30ml) + 180ml 熱水
+瑪奇朵 (Espresso Macchiato): 1份濃縮 (30ml) + 1勺(約15ml)細緻奶泡
+告爾多 (Cortado): 1份濃縮 (30ml) + 30ml 溫牛奶 (1:1 比例，幾乎無奶泡)
+馥芮白 (Flat White): 2份濃縮 (60ml) + 120ml 溫牛奶 (比例 1:2，微乳沫厚度約 0.5cm)
+卡布奇諾 (Cappuccino): 1份濃縮 (30ml) + 60ml 溫牛奶 + 60ml 厚奶泡 (1:1:1 比例，奶泡厚度約 1-2cm)
+義式拿鐵 (Caffè Latte): 1份濃縮 (30ml) + 240-300ml 溫牛奶 + 少許奶泡 (奶量多，奶泡厚度約 1cm)
