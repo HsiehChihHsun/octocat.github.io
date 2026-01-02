@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Periodic Table</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="data.js"></script>
+</head>
+<body>
+    <div id="app">
+        <header class="controls-header">
+            <div class="mode-controls">
+                <button id="btn-ordered" class="active">依原子序</button>
+                <button id="btn-random">隨機排列</button>
+                <button id="btn-zh" class="active">繁體中文</button>
+                <button id="btn-symbol">字母代號</button>
+            </div>
+            <button id="btn-home" class="hidden">回到主畫面</button>
+        </header>
+
+        <main id="display-area">
+            <div id="element-text"></div>
+        </main>
+
+        <div id="start-overlay">
+            <button id="btn-start">開始</button>
+        </div>
+        
+        <!-- Invisible click zones for navigation -->
+        <div id="nav-left" class="nav-zone"></div>
+        <div id="nav-right" class="nav-zone"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
