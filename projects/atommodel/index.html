@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atom Model Generator</title>
+    <link rel="stylesheet" href="style.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Roboto:wght@400;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <div class="left-panel">
+            <div class="controls">
+                <div class="control-group">
+                    <label for="atomic-number">原子序 (Atomic Number)</label>
+                    <select id="atomic-number"></select>
+                </div>
+                <div class="control-group">
+                    <label for="isotope">同位素 (Isotope)</label>
+                    <select id="isotope"></select>
+                </div>
+            </div>
+
+            <div class="element-display">
+                <div class="element-name" id="element-name"></div>
+                <div class="element-symbol-container">
+                    <span class="mass-number" id="mass-number"></span>
+                    <span class="atomic-number-display" id="atomic-number-display"></span>
+                    <span class="symbol" id="element-symbol"></span>
+                </div>
+            </div>
+
+            <div class="export-section">
+                <button id="export-btn" class="btn">匯出 PNG (Export)</button>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <canvas id="atom-canvas"></canvas>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>

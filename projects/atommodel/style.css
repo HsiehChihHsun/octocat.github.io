@@ -1,0 +1,146 @@
+:root {
+    --bg-color: #f4f4f9;
+    --panel-bg: #ffffff;
+    --text-color: #333;
+    --accent-color: #007bff;
+    --border-color: #ddd;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: 'Roboto', 'Noto Sans TC', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    height: 100vh;
+    overflow: hidden;
+}
+
+.container {
+    display: flex;
+    height: 100%;
+}
+
+.left-panel {
+    width: 300px;
+    background-color: var(--panel-bg);
+    border-right: 1px solid var(--border-color);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+    flex-shrink: 0;
+}
+
+.right-panel {
+    flex-grow: 1;
+    background-color: #ffffff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.control-group {
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    font-size: 0.9em;
+    color: #555;
+}
+
+select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 1em;
+    background-color: #fff;
+}
+
+.element-display {
+    margin-top: 40px;
+    text-align: center;
+    padding: 20px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    background-color: #fafafa;
+}
+
+.element-name {
+    font-size: 1.5em;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #222;
+}
+
+.element-symbol-container {
+    display: inline-block;
+    position: relative;
+    font-family: 'Times New Roman', serif;
+    margin-top: 10px;
+    padding-left: 1.5em;
+    /* Increased space for numbers */
+}
+
+.symbol {
+    font-size: 4em;
+    line-height: 1;
+    font-weight: bold;
+    margin-left: 5px;
+    /* Add some spacing */
+}
+
+.mass-number {
+    position: absolute;
+    top: 0.2em;
+    left: 0;
+    font-size: 1.2em;
+    /* Slightly smaller */
+    text-align: right;
+    width: 1.2em;
+}
+
+.atomic-number-display {
+    position: absolute;
+    bottom: 0.2em;
+    left: 0;
+    font-size: 1.2em;
+    /* Slightly smaller */
+    text-align: right;
+    width: 1.2em;
+}
+
+.export-section {
+    margin-top: auto;
+    text-align: center;
+    padding-top: 20px;
+}
+
+.btn {
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.2s;
+}
+
+.btn:hover {
+    background-color: #0056b3;
+}
+
+canvas {
+    display: block;
+}
