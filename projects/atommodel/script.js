@@ -455,7 +455,7 @@ function drawCurrentAtom() {
             const symbolSize = er * 0.6;
             ctx.moveTo(ex - symbolSize / 2, ey);
             ctx.lineTo(ex + symbolSize / 2, ey);
-            ctx.strokeStyle = '#ffffff';
+            ctx.strokeStyle = '#000000ff';
             ctx.lineWidth = 2 * currentScale;
             ctx.stroke();
         }
