@@ -23,6 +23,10 @@
                     <label for="isotope">同位素 (Isotope)</label>
                     <select id="isotope"></select>
                 </div>
+                <div class="control-group">
+                    <label for="charge">帶電量 (Charge)</label>
+                    <select id="charge"></select>
+                </div>
             </div>
 
             <div class="element-display">
@@ -35,7 +39,24 @@
             </div>
 
             <div class="export-section">
-                <button id="export-btn" class="btn">匯出 PNG (Export)</button>
+                <!-- Main Atom Export -->
+                <button id="export-btn" class="btn">匯出原子模型 (Atom PNG)</button>
+
+                <hr style="margin: 15px 0; border: 0; border-top: 1px solid #eee;">
+
+                <!-- Symbol Features -->
+                <button id="export-symbol-btn" class="btn" style="background-color: #28a745;">匯出元素符號 (Symbol
+                    PNG)</button>
+
+                <div class="latex-group" style="margin-top: 15px; text-align: left;">
+                    <label for="latex-code">LaTeX 複製:</label>
+                    <div style="display: flex; gap: 5px;">
+                        <input type="text" id="latex-code" readonly
+                            style="flex-grow: 1; padding: 5px; font-family: monospace;">
+                        <button id="copy-latex-btn" class="btn"
+                            style="padding: 5px 10px; font-size: 0.9em; background-color: #6c757d;">複製</button>
+                    </div>
+                </div>
             </div>
         </div>
 
