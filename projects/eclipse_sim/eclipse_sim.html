@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar Eclipse Simulator</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+        }
+
+        #container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #view3d {
+            width: 60%;
+            position: relative;
+            background: radial-gradient(circle at center, #1a1a2e 0%, #000 100%);
+        }
+
+        #viewObserver {
+            width: 40%;
+            background: #111;
+            border-left: 1px solid #333;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+        }
+
+        #obsViewContainer {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-bottom: 20px;
+            background: #111;
+            z-index: 5;
+        }
+
+        #controls {
+            width: 100%;
+            flex-grow: 1;
+            background: #1a1a1a;
+            padding: 20px;
+            box-sizing: border-box;
+            border-top: 1px solid #333;
+            overflow-y: auto;
+            position: static;
+            /* No longer absolute */
+            border-radius: 0;
+            backdrop-filter: none;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            margin-right: 10px;
+            cursor: pointer;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        button {
+            background: #444;
+            color: white;
+            border: 1px solid #666;
+            padding: 5px 15px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #666;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #obsCanvas {
+            background: #000;
+            margin-top: 20px;
+            border: 1px solid #333;
+            /* Critical: Fix CSS size to prevent infinite DPI growth loop */
+            width: 280px;
+            height: 280px;
+        }
+
+        #obsLabel {
+            margin-top: 10px;
+            font-size: 1.1em;
+            color: #aaa;
+            text-align: center;
+            width: 100%;
+        }
+
+        .legend {
+            font-size: 0.85em;
+            color: #ccc;
+            margin-top: 5px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 3px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="container">
+        <!-- Left: 3D Scene (60%) -->
+        <div id="view3d"></div>
+
+        <!-- Right: Observer & Controls (40%) -->
+        <div id="viewObserver">
+            <!-- Top: Observer View -->
+            <div id="obsViewContainer">
+                <div style="margin-top:20px; font-weight:bold;" data-i18n="obsViewTitle">Observer View</div>
+                <canvas id="obsCanvas" width="300" height="300"></canvas>
+                <div id="obsLabel" data-i18n="obsLabel">Current View</div>
+            </div>
+
+            <!-- Bottom: Controls -->
+            <div id="controls">
+                <div class="control-group" style="text-align: right; margin-bottom: 10px;">
+                    <button id="btnLang" style="font-size: 0.8em; padding: 3px 8px;">English / 繁體中文</button>
+                </div>
+                <div class="control-group">
+                    <h3 data-i18n="modeTitle">Eclipse Mode</h3>
+                    <label><input type="radio" name="mode" value="total" checked> <span data-i18n="modeTotal">Total
+                            Eclipse (Huge Moon)</span></label>
+                    <label><input type="radio" name="mode" value="annular"> <span data-i18n="modeAnnular">Annular
+                            Eclipse (Tiny Moon)</span></label>
+                </div>
+                <div class="control-group">
+                    <h3 data-i18n="zoomTitle">Camera Zoom</h3>
+                    <!-- Ensure event listener attaches by using oninput directly or re-attaching in JS -->
+                    <input type="range" id="zoomSlider" min="20" max="100" value="50" style="width: 100%;">
+                </div>
+                <div class="control-group">
+                    <h3 data-i18n="playbackTitle">Playback</h3>
+                    <button id="btnPlay" data-i18n="play">Play</button>
+                    <button id="btnPause" data-i18n="pause">Pause</button>
+                    <button id="btnReset" data-i18n="reset">Reset</button>
+                </div>
+                <div class="legend">
+                    <div class="legend-item"><span class="dot"
+                            style="background:black; border:1px solid #555;"></span><span data-i18n="legUmbra">Umbra
+                            (Total)</span></div>
+                    <div class="legend-item"><span class="dot"
+                            style="background:linear-gradient(90deg, #555, #aaa);"></span><span
+                            data-i18n="legPenumbra">Penumbra (Partial)</span></div>
+                    <div class="legend-item"><span class="dot" style="background:red;"></span><span
+                            data-i18n="legObserver">Observer</span></div>
+                </div>
+                <div
+                    style="padding: 10px; opacity: 0.7; font-size: 0.85em; margin-top:10px; border-top:1px solid #444;">
+                    <p data-i18n="instruction">Drag the <b>Red Dot</b> in the 3D view to move the observer.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+    }
+  }
+</script>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // --- Configuration ---
+        const config = {
+            sunY: 60,
+            moonY: 30,
+            sunRadius: 8,
+            moonRadiusTotal: 5,
+            moonRadiusAnnular: 3,
+            groundSize: 100,
+            observerY: 0.5,
+            animationSpeed: 15
+        };
+
+        let state = {
+            mode: 'total',
+            isPlaying: false,
+            observerPos: new THREE.Vector3(30, 0, 0),
+            lang: 'zh-TW' // Default to Traditional Chinese
+        };
+
+        // --- Scene Setup ---
+        const container = document.getElementById('view3d');
+        const scene = new THREE.Scene();
+
+        // Camera - Adjusted to see Sun
+        // Moved back and aimed higher to encompass the Sun (Y=60).
+        const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.set(0, 70, 130);
+        camera.lookAt(0, 35, 0);
+
+        // Zoom Logic (FOV)
+        const zoomSlider = document.getElementById('zoomSlider');
+        zoomSlider.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            // 0 -> 75 (Wide), 100 -> 15 (Telephoto)
+            const fov = 75 - (val / 100) * 60;
+            camera.fov = fov;
+            camera.updateProjectionMatrix();
+        });
+        camera.fov = 45; // Initial (value=50)
+        camera.updateProjectionMatrix();
+
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
+        // High DPI / Retina Display Support
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        container.appendChild(renderer.domElement);
+
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+        scene.add(ambientLight);
+
+        const sunLight = new THREE.PointLight(0xffaa00, 2, 200);
+        sunLight.position.set(0, config.sunY, 0);
+        scene.add(sunLight);
+
+        // --- Objects ---
+
+        // 1. Sun
+        const sunGeo = new THREE.SphereGeometry(config.sunRadius, 64, 64);
+        const sunMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+        const sunMesh = new THREE.Mesh(sunGeo, sunMat);
+        sunMesh.position.set(0, config.sunY, 0);
+        scene.add(sunMesh);
+
+        // 2. Moon
+        const moonGeo = new THREE.SphereGeometry(1, 64, 64);
+        const moonMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
+        const moonMesh = new THREE.Mesh(moonGeo, moonMat);
+        moonMesh.position.set(0, config.moonY, 0);
+        scene.add(moonMesh);
+
+        // 3. Ground (Analytic Shadow)
+        // Canvas resolution scaled for sharpness if clear needed, but texture limit is standard.
+        // 2048 for better gradients.
+        const groundCanvas = document.createElement('canvas');
+        groundCanvas.width = 1024; // Reduce size for stability
+        groundCanvas.height = 1024;
+        const groundCtx = groundCanvas.getContext('2d');
+        const groundTex = new THREE.CanvasTexture(groundCanvas);
+        // Anisotropy for sharper oblique views
+        groundTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+
+        const groundGeo = new THREE.PlaneGeometry(config.groundSize, config.groundSize);
+        const groundMat = new THREE.MeshBasicMaterial({ map: groundTex, side: THREE.DoubleSide });
+        const groundMesh = new THREE.Mesh(groundGeo, groundMat);
+        groundMesh.rotation.x = -Math.PI / 2;
+        scene.add(groundMesh);
+
+        // Remove GridHelper as requested
+
+        // 4. Observer Marker
+        const obsGeo = new THREE.ConeGeometry(1, 3, 32);
+        const obsMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        const obsMesh = new THREE.Mesh(obsGeo, obsMat);
+        obsMesh.position.y = 1.5;
+        scene.add(obsMesh);
+
+        // 5. Light Cones (Helper Lines)
+        const linesMaterial = new THREE.LineBasicMaterial({
+            color: 0xffffaa,
+            transparent: true,
+            opacity: 0.6, // Thicker/visible
+            depthWrite: false,
+            linewidth: 2
+        });
+        const linesGeometry = new THREE.BufferGeometry();
+        const linesMesh = new THREE.LineSegments(linesGeometry, linesMaterial);
+        scene.add(linesMesh);
+
+
+        // --- Logic: Analytic Shadow Calculation ---
+
+        function updateShadows() {
+            const R_s = config.sunRadius;
+            const R_m = moonMesh.scale.x;
+            const Y_s = config.sunY;
+            const Y_m = config.moonY;
+
+            // --- 1. Texture Drawing ---
+            // Solid Darker Green Background #156c2e
+            groundCtx.fillStyle = '#156c2e';
+            groundCtx.fillRect(0, 0, 1024, 1024);
+
+            const mapScale = 1024 / config.groundSize;
+            const cx = 512;
+            const cy = 512;
+
+            // Radii on Ground (Intersection of Cones)
+            // Slopes relative to vertical axis (Cone Half-Angles)
+            // Penumbra Angle (alpha): sin(alpha) = (Rs + Rm) / (Ys - Ym)
+            // Umbra Angle (gamma): sin(gamma) = (Rs - Rm) / (Ys - Ym)
+
+            // However, for ground intersection radius, simple linear extrapolation of "equator" is often slightly off if we want *exact* conic section, 
+            // but for top-down circle approximation:
+            // R_ground = radius_at_ground. 
+            // Correct math:
+            // Vertex of Penumbra Cone (between objects): Y_v_pen = (Rm Ys + Rs Ym) / (Rs + Rm)
+            // Radius at Y=0: R_pen_g = R_v_pen_apparent? No.
+            // Similar triangles approach is robust for radius.
+            // Umbra Radius:  R_u = R_m - (R_s - R_m) * Y_m / (Y_s - Y_m)
+            // Penumbra Radius: R_p = R_m + (R_s + R_m) * Y_m / (Y_s - Y_m)
+
+            // --- Exact Analytic Geometry for Spheres ---
+            const dist = Y_s - Y_m;
+
+            // Penumbra (Internal Tangent)
+            const sinBeta = (R_s + R_m) / dist;
+            const tanBeta = sinBeta / Math.sqrt(1 - sinBeta * sinBeta);
+            // Vertex height above ground
+            const apexPenumbraY = (R_s * Y_m + R_m * Y_s) / (R_s + R_m);
+            // Radius at ground (Y=0)
+            const radiusPenumbraAtGround = apexPenumbraY * tanBeta;
+
+            // Umbra (External Tangent)
+            const sinGamma = (R_s - R_m) / dist;
+            const tanGamma = sinGamma / Math.sqrt(1 - sinGamma * sinGamma);
+            // Vertex height (can be positive or negative)
+            const apexUmbraY = (R_s * Y_m - R_m * Y_s) / (R_s - R_m);
+            const radiusUmbraAtGround = Math.abs(apexUmbraY) * tanGamma;
+
+            // --- Draw Penumbra (Gradient) ---
+            if (radiusPenumbraAtGround > 0) {
+                const rP_px = radiusPenumbraAtGround * mapScale;
+                const rU_clamped = Math.max(0, radiusUmbraAtGround);
+                const rU_px = rU_clamped * mapScale;
+
+                const grad = groundCtx.createRadialGradient(cx, cy, rU_px, cx, cy, rP_px);
+                grad.addColorStop(0, "rgba(0, 0, 0, 0.85)"); // Inner: Dark
+                grad.addColorStop(1, "rgba(0, 0, 0, 0)");    // Outer: Transparent
+
+                groundCtx.fillStyle = grad;
+                groundCtx.beginPath();
+                groundCtx.arc(cx, cy, rP_px, 0, Math.PI * 2);
+                groundCtx.fill();
+
+                // Boundary Ring (Penumbra) - Outer Limit
+                groundCtx.strokeStyle = "rgba(150, 150, 150, 0.5)"; // Lighter Gray
+                groundCtx.lineWidth = 2;
+                groundCtx.beginPath();
+                groundCtx.arc(cx, cy, rP_px, 0, Math.PI * 2);
+                groundCtx.stroke();
+            }
+
+            // --- Draw Umbra (Solid) or Antumbra ---
+            if (radiusUmbraAtGround > 0) {
+                // Total Eclipse (Umbra)
+                const rU_px = radiusUmbraAtGround * mapScale;
+                groundCtx.fillStyle = "rgba(0, 0, 0, 0.9)";
+                groundCtx.beginPath();
+                groundCtx.arc(cx, cy, rU_px, 0, Math.PI * 2);
+                groundCtx.fill();
+
+                // Boundary Ring (Umbra)
+                groundCtx.strokeStyle = "rgba(150, 150, 150, 0.5)"; // Lighter Gray
+                groundCtx.lineWidth = 2;
+                groundCtx.beginPath();
+                groundCtx.arc(cx, cy, rU_px, 0, Math.PI * 2);
+                groundCtx.stroke();
+
+            } else {
+                // Annular Eclipse (Antumbra)
+                const rA_px = Math.abs(radiusUmbraAtGround) * mapScale;
+                groundCtx.fillStyle = "rgba(0, 0, 0, 0.7)";
+                groundCtx.beginPath();
+                groundCtx.arc(cx, cy, rA_px, 0, Math.PI * 2);
+                groundCtx.fill();
+
+                // Red Boundary Ring for Antumbra
+                groundCtx.strokeStyle = "rgba(200, 50, 50, 0.6)";
+                groundCtx.lineWidth = 4;
+                groundCtx.beginPath();
+                groundCtx.arc(cx, cy, rA_px, 0, Math.PI * 2);
+                groundCtx.stroke();
+            }
+
+            groundTex.needsUpdate = true;
+
+            // --- 2. Helper Lines (Corrected Tangent Geometry) ---
+            // We need lines NOT from equator, but from the actual tangent circle on the sphere.
+            // d = Y_s - Y_m
+            // Penumbra Angle (Internal Tangent): sin(beta) = (R_s + R_m) / d
+            // Umbra Angle (External Tangent): sin(gamma) = (R_s - R_m) / d
+
+            // Reuse pre-calculated values
+            const cosBeta = Math.sqrt(1 - sinBeta * sinBeta);
+            const cosGamma = Math.sqrt(1 - sinGamma * sinGamma);
+
+            const vertices = [];
+            const segments = 16;
+            for (let i = 0; i < segments; i++) {
+                const theta = (i / segments) * Math.PI * 2;
+                const cosT = Math.cos(theta);
+                const sinT = Math.sin(theta);
+
+                // --- Penumbra Lines (Internal Cross) ---
+                // High point (Sun): y = Y_s - R_s * sin(beta). Radial offset = R_s * cos(beta).
+                // Low point (Moon opposite): y = Y_m + R_m * sin(beta). Radial offset = R_m * cos(beta).
+
+                // Sun Contact Point
+                const ps_r = R_s * cosBeta;
+                const ps_y = Y_s - R_s * sinBeta;
+                const ps_x = cosT * ps_r;
+                const ps_z = sinT * ps_r;
+
+                // Moon Contact Point (Opposite side => -cosT, -sinT)
+                const pm_r = R_m * cosBeta;
+                const pm_y = Y_m + R_m * sinBeta;
+                const pm_x = -cosT * pm_r;
+                const pm_z = -sinT * pm_r;
+
+                // Extrapolate to Ground (y=0)
+                const vp_x = pm_x - ps_x;
+                const vp_y = pm_y - ps_y;
+                const vp_z = pm_z - ps_z;
+
+                // P_ground = P_moon + t * V. Find t where y=0.
+                // 0 = pm_y + t * vp_y => t = -pm_y / vp_y
+                const t_pen = -pm_y / vp_y;
+                const pg_x = pm_x + t_pen * vp_x;
+                const pg_z = pm_z + t_pen * vp_z;
+
+                vertices.push(ps_x, ps_y, ps_z);
+                vertices.push(pg_x, 0, pg_z);
+
+                // --- Umbra Lines (External) ---
+                // Sun Contact: y = Y_s - R_s * sin(gamma). R = R_s * cos(gamma).
+                // Moon Contact: y = Y_m - R_m * sin(gamma). R = R_m * cos(gamma).
+
+                const us_r = R_s * cosGamma;
+                const us_y = Y_s - R_s * sinGamma;
+                const us_x = cosT * us_r;
+                const us_z = sinT * us_r;
+
+                const um_r = R_m * cosGamma;
+                const um_y = Y_m - R_m * sinGamma;
+                const um_x = cosT * um_r;
+                const um_z = sinT * um_r;
+
+                const vu_x = um_x - us_x;
+                const vu_y = um_y - us_y;
+                const vu_z = um_z - us_z;
+
+                const t_umb = -um_y / vu_y;
+                const ug_x = um_x + t_umb * vu_x;
+                const ug_z = um_z + t_umb * vu_z;
+
+                vertices.push(us_x, us_y, us_z);
+                vertices.push(ug_x, 0, ug_z);
+            }
+            linesGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        }
+
+
+        // --- Interaction ---
+
+        const raycaster = new THREE.Raycaster();
+        const planeInter = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+        const mouse = new THREE.Vector2();
+        let isDragging = false;
+
+        const inputs = document.querySelectorAll('input[name="mode"]');
+        inputs.forEach(input => {
+            input.addEventListener('change', (e) => {
+                state.mode = e.target.value;
+                updateMode();
+            });
+        });
+
+        document.getElementById('btnPlay').onclick = () => { state.isPlaying = true; };
+        document.getElementById('btnPause').onclick = () => { state.isPlaying = false; };
+        document.getElementById('btnReset').onclick = () => {
+            state.isPlaying = false;
+            state.observerPos.set(30, 0, 0);
+            updateObserver();
+        };
+
+        function updateMode() {
+            if (state.mode === 'total') {
+                moonMesh.scale.set(config.moonRadiusTotal, config.moonRadiusTotal, config.moonRadiusTotal);
+            } else {
+                moonMesh.scale.set(config.moonRadiusAnnular, config.moonRadiusAnnular, config.moonRadiusAnnular);
+            }
+            updateShadows();
+            updateObserver();
+        }
+
+        container.addEventListener('mousedown', onMouseDown);
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+
+        function onMouseDown(event) {
+            event.preventDefault();
+            const rect = container.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(groundMesh);
+
+            if (intersects.length > 0) {
+                isDragging = true;
+                state.isPlaying = false;
+                updateObserverPosFromRay(intersects[0].point);
+            }
+        }
+
+        function onMouseMove(event) {
+            if (!isDragging) return;
+            const rect = container.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const target = new THREE.Vector3();
+            raycaster.ray.intersectPlane(planeInter, target);
+            if (target) {
+                updateObserverPosFromRay(target);
+            }
+        }
+
+        function onMouseUp() {
+            isDragging = false;
+        }
+
+        function updateObserverPosFromRay(point) {
+            state.observerPos.copy(point);
+            const limit = config.groundSize / 2;
+            state.observerPos.x = Math.max(-limit, Math.min(limit, state.observerPos.x));
+            state.observerPos.z = Math.max(-limit, Math.min(limit, state.observerPos.z));
+            state.observerPos.y = 0;
+            updateObserver();
+        }
+
+
+        // --- Right Panel (Observer View) Logic ---
+        const obsCanvas = document.getElementById('obsCanvas');
+        const obsCtx = obsCanvas.getContext('2d');
+
+        // Fix High DPI for Overlay Canvas
+        // Fix High DPI for Overlay Canvas
+        // Prevents infinite loop by using a fixed CSS reference or ensuring style match
+        function initObserverCanvas() {
+            const dpr = window.devicePixelRatio || 1;
+            // distinct logical size
+            const logicalWidth = 280;
+            const logicalHeight = 280;
+
+            // Set internal resolution (Physical)
+            obsCanvas.width = logicalWidth * dpr;
+            obsCanvas.height = logicalHeight * dpr;
+
+            // Set CSS display size (Logical)
+            obsCanvas.style.width = `${logicalWidth}px`;
+            obsCanvas.style.height = `${logicalHeight}px`;
+
+            // Normalize coordinate system to logical pixels
+            obsCtx.scale(dpr, dpr);
+        }
+
+        function updateObserver() {
+            obsMesh.position.copy(state.observerPos);
+
+            // Use logical sizes (CSS pixels) for calculation, since context is scaled
+            const width = obsCanvas.width / (window.devicePixelRatio || 1);
+            const height = obsCanvas.height / (window.devicePixelRatio || 1);
+
+            // Draw 2D View
+            obsCtx.fillStyle = "#000000";
+            obsCtx.fillRect(0, 0, width, height);
+
+            const cx = width / 2;
+            const cy = height / 2;
+
+            const f = 2000;
+            const ox = state.observerPos.x;
+            const oz = state.observerPos.z;
+
+            // Sun relative pos (centered) implies we look tracked.
+            // Calculate true 3D distances vectors
+            const vSun = new THREE.Vector3(0, config.sunY, 0).sub(state.observerPos);
+            const vMoon = new THREE.Vector3(0, config.moonY, 0).sub(state.observerPos);
+
+            const dist_s_3d = vSun.length();
+            const dist_m_3d = vMoon.length();
+
+            // Correct Separation Angle
+            const separationAngle = vSun.angleTo(vMoon);
+
+            // Projection scale (focal length)
+            const scale = 500;
+
+            // Projected Distance on Screen
+            const screenSep = scale * Math.tan(separationAngle);
+
+            // Determine direction on screen (approximate using ground projection difference is sufficient for rotation)
+            // Or strictly: Project vMoon onto the plane perpendicular to vSun.
+            // Simplified: The original dx/dz difference direction is correct for the azimuth.
+            const P_s_x = -ox / config.sunY;
+            const P_s_z = -oz / config.sunY;
+            const P_m_x = -ox / config.moonY;
+            const P_m_z = -oz / config.moonY;
+
+            let dirX = (P_m_x - P_s_x);
+            let dirY = (P_m_z - P_s_z);
+            const len = Math.sqrt(dirX * dirX + dirY * dirY);
+            if (len > 0.00001) {
+                dirX /= len;
+                dirY /= len;
+            } else {
+                dirX = 1; dirY = 0;
+            }
+
+            const moonscreen_x = cx + dirX * screenSep;
+            const moonscreen_y = cy + dirY * screenSep;
+
+            // Radii (Correct Perspective Projection)
+            // Angular Radius = asin(Radius / Distance)
+            // Screen Radius = scale * tan(Angular Radius)
+            const ang_r_sun = Math.asin(config.sunRadius / dist_s_3d);
+            const sun_r_screen = scale * Math.tan(ang_r_sun);
+
+            const radius_moon_world = state.mode === 'total' ? config.moonRadiusTotal : config.moonRadiusAnnular;
+            const ang_r_moon = Math.asin(radius_moon_world / dist_m_3d);
+            const moon_r_screen = scale * Math.tan(ang_r_moon);
+
+            // Draw Sun
+            obsCtx.fillStyle = "#FFD700";
+            obsCtx.beginPath();
+            obsCtx.arc(cx, cy, sun_r_screen, 0, Math.PI * 2);
+            obsCtx.fill();
+
+            // Corona
+            const gradient = obsCtx.createRadialGradient(cx, cy, sun_r_screen, cx, cy, sun_r_screen * 1.5);
+            gradient.addColorStop(0, "rgba(255, 200, 0, 0.5)");
+            gradient.addColorStop(1, "rgba(255, 200, 0, 0)");
+            obsCtx.fillStyle = gradient;
+            obsCtx.beginPath();
+            obsCtx.arc(cx, cy, sun_r_screen * 1.5, 0, Math.PI * 2);
+            obsCtx.fill();
+
+            // Draw Moon
+            obsCtx.fillStyle = "#000000";
+            obsCtx.beginPath();
+            obsCtx.arc(moonscreen_x, moonscreen_y, moon_r_screen, 0, Math.PI * 2);
+            obsCtx.fill();
+
+            // Update Text
+            const label = document.getElementById('obsLabel');
+            const dist = Math.sqrt(Math.pow(moonscreen_x - cx, 2) + Math.pow(moonscreen_y - cy, 2));
+
+            // Logic Update: Containment Check
+            // Total/Annular if "Distance + SmallerRadius <= LargerRadius"
+            // i.e. One circle is completely inside the other.
+
+            const isContained = dist <= Math.abs(sun_r_screen - moon_r_screen);
+            const isTouching = dist < sun_r_screen + moon_r_screen;
+
+            if (isContained) {
+                if (state.mode === 'total') {
+                    // Moon > Sun
+                    label.innerText = (state.lang === 'zh-TW') ? "狀態：全蝕食甚 (日全蝕)" : "Status: Totality! (Total Eclipse)";
+                    obsCtx.shadowBlur = 20;
+                    obsCtx.shadowColor = "white";
+                    obsCtx.beginPath();
+                    obsCtx.arc(cx, cy, sun_r_screen, 0, Math.PI * 2);
+                    obsCtx.stroke();
+                    obsCtx.shadowBlur = 0;
+                } else {
+                    // Sun > Moon (Annular)
+                    label.innerText = (state.lang === 'zh-TW') ? "狀態：環蝕食甚 (日環蝕)" : "Status: Maximum Eclipse (Annular)";
+                }
+            } else if (isTouching) {
+                label.innerText = (state.lang === 'zh-TW') ? "狀態：日偏蝕" : "Status: Partial Eclipse";
+            } else {
+                label.innerText = (state.lang === 'zh-TW') ? "狀態：無日蝕" : "Status: No Eclipse";
+            }
+        }
+
+        // --- Localization ---
+        const translations = {
+            "en": {
+                "obsViewTitle": "Observer View",
+                "obsLabel": "Current View",
+                "modeTitle": "Eclipse Mode",
+                "modeTotal": "Total Eclipse (Huge Moon)",
+                "modeAnnular": "Annular Eclipse (Tiny Moon)",
+                "zoomTitle": "Camera Zoom",
+                "playbackTitle": "Playback",
+                "play": "Play",
+                "pause": "Pause",
+                "reset": "Reset",
+                "legUmbra": "Umbra (Total)",
+                "legPenumbra": "Penumbra (Partial)",
+                "legObserver": "Observer",
+                "instruction": "Drag the <b>Red Dot</b> in the 3D view to move the observer."
+            },
+            "zh-TW": {
+                "obsViewTitle": "觀察者視角 (模擬天空)",
+                "obsLabel": "當前景象",
+                "modeTitle": "日蝕模式",
+                "modeTotal": "日全蝕模式 (月球較大)",
+                "modeAnnular": "日環蝕模式 (月球較小)",
+                "zoomTitle": "相機縮放",
+                "playbackTitle": "播放控制",
+                "play": "播放",
+                "pause": "暫停",
+                "reset": "重置",
+                "legUmbra": "本影區 (全蝕)",
+                "legPenumbra": "半影區 (偏蝕)",
+                "legObserver": "觀察者",
+                "instruction": "拖曳 3D 視圖中的 <b>紅點</b> 來移動觀察者。"
+            }
+        };
+
+        function updateText() {
+            const t = translations[state.lang];
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (t[key]) el.innerHTML = t[key];
+            });
+            document.title = (state.lang === 'zh-TW') ? "日蝕模擬器" : "Solar Eclipse Simulator";
+            updateObserver(); // Update status label
+        }
+
+        document.getElementById('btnLang').onclick = () => {
+            state.lang = (state.lang === 'zh-TW') ? 'en' : 'zh-TW';
+            updateText();
+        };
+
+
+
+        // --- Animation Loop ---
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Safety: If context lost or dimensions 0, skip
+            if (!container.clientWidth || !container.clientHeight) return;
+
+            const delta = clock.getDelta();
+
+            if (state.isPlaying) {
+                state.observerPos.x -= config.animationSpeed * delta;
+
+                if (state.observerPos.x < -40) {
+                    state.isPlaying = false;
+                }
+                updateObserver();
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            // Debounce or safety check
+            if (!container.clientWidth || !container.clientHeight) return;
+
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+
+            initObserverCanvas(); // Re-init 2D canvas on resize
+
+            // Delay update to ensure layout settled? No, synchronous should be fine.
+            updateShadows();
+            updateObserver();
+        });
+
+        initObserverCanvas(); // Init Setup
+        updateMode();
+        updateText(); // Apply default language
+        animate();
+
+    </script>
+</body>
+
+</html>
