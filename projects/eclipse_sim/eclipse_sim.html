@@ -161,12 +161,18 @@
                     <!-- Ensure event listener attaches by using oninput directly or re-attaching in JS -->
                     <input type="range" id="zoomSlider" min="20" max="100" value="50" style="width: 100%;">
                 </div>
+
+                <div class="control-group">
+                    <label><input type="checkbox" id="chkLines"> <span data-i18n="showLines">Show Helper
+                            Lines</span></label>
+                </div>
                 <div class="control-group">
                     <h3 data-i18n="playbackTitle">Playback</h3>
                     <button id="btnPlay" data-i18n="play">Play</button>
                     <button id="btnPause" data-i18n="pause">Pause</button>
                     <button id="btnReset" data-i18n="reset">Reset</button>
                 </div>
+
                 <div class="legend">
                     <div class="legend-item"><span class="dot"
                             style="background:black; border:1px solid #555;"></span><span data-i18n="legUmbra">Umbra
@@ -241,6 +247,7 @@
         // High DPI / Retina Display Support
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.localClippingEnabled = true; // Enable Clipping for V8
         container.appendChild(renderer.domElement);
 
         // Lights
@@ -253,19 +260,43 @@
 
         // --- Objects ---
 
-        // 1. Sun
+        // 1. Sun (Enhanced 3D Look)
         const sunGeo = new THREE.SphereGeometry(config.sunRadius, 64, 64);
+        // Emissive makes it glow, but Standard allows interactions.
+        // Actually, for a Sun, MeshBasic is best for "Pure Light", but looking "3D" implies shading?
+        // Let's use Basic but maybe a texture creates the 3D look? 
+        // Or Emissive 1.0 with some rim darkening (fresnel)? Hard given simple materials.
+        // Let's stick to Basic for Sun (it's a light source!), it is inherently a "flat circle" to the eye unless textured.
+        // But user asked for "3D visual effect". 
+        // Let's try MeshStandard with high Emissive but side falloff? No, standard emissive is flat.
+        // Let's keep Sun Basic but maybe add a Glow Sprite?
+        // For now, let's focus on the Moon.
         const sunMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
         const sunMesh = new THREE.Mesh(sunGeo, sunMat);
         sunMesh.position.set(0, config.sunY, 0);
         scene.add(sunMesh);
 
-        // 2. Moon
+        // 2. Moon (Dual-Mesh for Sharp Terminator)
         const moonGeo = new THREE.SphereGeometry(1, 64, 64);
-        const moonMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
-        const moonMesh = new THREE.Mesh(moonGeo, moonMat);
-        moonMesh.position.set(0, config.moonY, 0);
-        scene.add(moonMesh);
+
+        // A. Lit Cap (Top)
+        const moonLitMat = new THREE.MeshBasicMaterial({
+            color: 0xE3E3E3, // Pure White Highlight
+        });
+        const moonLit = new THREE.Mesh(moonGeo, moonLitMat);
+        moonLit.position.set(0, config.moonY, 0);
+        // Clipping initialized in updateShadows to match dynamic geometry
+        scene.add(moonLit);
+
+        // B. Dark Base (Bottom)
+        const moonDarkMat = new THREE.MeshBasicMaterial({
+            color: 0x5C5C5C, // Very Dark Gray
+        });
+        const moonDark = new THREE.Mesh(moonGeo, moonDarkMat);
+        moonDark.position.set(0, config.moonY, 0);
+        scene.add(moonDark);
+
+        // Remove Bounce Light (No longer needed with self-lit dual mesh)
 
         // 3. Ground (Analytic Shadow)
         // Canvas resolution scaled for sharpness if clear needed, but texture limit is standard.
@@ -303,14 +334,84 @@
         });
         const linesGeometry = new THREE.BufferGeometry();
         const linesMesh = new THREE.LineSegments(linesGeometry, linesMaterial);
+        linesMesh.visible = false; // Default hidden
         scene.add(linesMesh);
+
+        // 6. Volumetric Shadows (V6)
+        // Unit Cone: Height 1, Radius 1 (Bottom). Center at (0, 0, 0)
+        // Note: ConeGeometry pivot is at center (Y=0), ranging from -0.5 to +0.5.
+        // We need to transform it often.
+        // V8 Refinement: 128 Segments for ultra-smooth edge matching
+        const volGeo = new THREE.ConeGeometry(1, 1, 128, 1, true);
+        // Move pivot to Tip (Top)? No, let's just handle it in update loop.
+        // Standard Cone: Tip at (0, 0.5, 0), Base at (0, -0.5, 0).
+
+        // Umbra Volume (Dark Fog)
+        const umbraVolMat = new THREE.MeshBasicMaterial({
+            color: 0x000000,
+            transparent: true,
+            opacity: 0.5,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+            // V8 Refinement: Add clipping to Umbra to allow bias adjustment
+            clippingPlanes: [new THREE.Plane(new THREE.Vector3(0, -1, 0), config.moonY)]
+        });
+        const umbraVol = new THREE.Mesh(volGeo, umbraVolMat);
+        scene.add(umbraVol);
+
+        // Helper to create vertical gradient texture (Apex -> Base)
+        function createGradientTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 32;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+
+            // Gradient from Top (Apex, V=1) to Bottom (Base, V=0)
+            // We want Apex to be Darker (Higher Alpha) and Base to be Lighter (Lower Alpha).
+            // UV V=1 is Top. V=0 is Bottom.
+            // Canvas Y=0 is Top. Y=256 is Bottom.
+            // So Y=0 corresponds to Apex.
+
+            const grad = ctx.createLinearGradient(0, 0, 0, 256);
+            grad.addColorStop(0.0, 'rgba(0, 0, 0, 0.6)'); // Apex: Darker
+            grad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)'); // Base: Transparent (Fades out)
+
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 32, 256);
+
+            const tex = new THREE.CanvasTexture(canvas);
+            return tex;
+        }
+
+        // Penumbra Volume (Gradient Fog - Simplified as Lighter Transparent)
+        // User requested "Gradient mist, until edge is transparent".
+        // This is best approximated by a very low opacity cone for now.
+        // Penumbra Volume (Gradient Fog)
+        // Helper to create texture... (existing code)
+
+        const penumbraVolMat = new THREE.MeshBasicMaterial({
+            map: createGradientTexture(),
+            color: 0xffffff,
+            transparent: true,
+            opacity: 1.0,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+            blending: THREE.NormalBlending,
+            clippingPlanes: [new THREE.Plane(new THREE.Vector3(0, -1, 0), config.moonY)], // Clip above Moon
+            polygonOffset: true,
+            polygonOffsetFactor: 1, // Fix Z-fighting
+            polygonOffsetUnits: 1
+        });
+        const penumbraVol = new THREE.Mesh(volGeo, penumbraVolMat);
+        scene.add(penumbraVol);
 
 
         // --- Logic: Analytic Shadow Calculation ---
 
         function updateShadows() {
             const R_s = config.sunRadius;
-            const R_m = moonMesh.scale.x;
+            // Use one of the moon meshes for scale reference (they are synced)
+            const R_m = moonLit.scale.x;
             const Y_s = config.sunY;
             const Y_m = config.moonY;
 
@@ -353,8 +454,134 @@
             const sinGamma = (R_s - R_m) / dist;
             const tanGamma = sinGamma / Math.sqrt(1 - sinGamma * sinGamma);
             // Vertex height (can be positive or negative)
+            // Vertex height (can be positive or negative)
             const apexUmbraY = (R_s * Y_m - R_m * Y_s) / (R_s - R_m);
             const radiusUmbraAtGround = Math.abs(apexUmbraY) * tanGamma;
+
+            // --- Update Volumetric Meshes (V6) & Moon Clipping (V8) ---
+
+            // 1. Calculate Tangent Contact Y (Terminator)
+            // Penumbra Tangent touches the "Upper Hemisphere" because the Apex is above.
+            // Angle Beta is measured from Vertical.
+            // Tangent Point Y (local) = + R * sin(Beta).
+            // World Y = Y_m + R_m * sin(Beta).
+            // V8 Refinement: Calibration Biases (HARDCODED)
+            // Values determined by user visual calibration:
+            // Penumbra Bias: 0.490 (Blue) - Outer Limit
+            // Umbra Bias: 1.540 (Green) - Inner Limit
+            const biasPen = 0.490;
+            const biasUmb = 1.540;
+
+            // Apply Manual Offsets
+            const contactY = Y_m + R_m * sinBeta - biasPen;
+            const contactY_Umb = Y_m + R_m * sinGamma - biasUmb;
+
+            // 2. Update Penumbra Clipping (Cut off TOP, Keep BELOW)
+            // Plane (0, -1, 0) means "Keep where -y + C > 0" => "y < C".
+            if (penumbraVol.material.clippingPlanes) {
+                penumbraVol.material.clippingPlanes[0].normal.set(0, -1, 0);
+                penumbraVol.material.clippingPlanes[0].constant = contactY;
+            }
+
+            if (umbraVol.material.clippingPlanes) {
+                umbraVol.material.clippingPlanes[0].normal.set(0, -1, 0);
+                umbraVol.material.clippingPlanes[0].constant = contactY_Umb;
+            }
+
+            // 3. Update Moon Clipping (Dual Mesh)
+            // Lit Moon: Keep ABOVE ContactY. 
+            // Plane (0, 1, 0) => "y + C > 0" => "y > -C". Constant = -contactY.
+
+            if (!moonLit.material.clippingPlanes) {
+                moonLit.material.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)];
+            }
+            moonLit.material.clippingPlanes[0].constant = -contactY;
+
+            // Dark Moon: Keep BELOW ContactY.
+            // Plane (0, -1, 0) => "y < C". Constant = contactY.
+            if (!moonDark.material.clippingPlanes) {
+                moonDark.material.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, -1, 0), 0)];
+            }
+            moonDark.material.clippingPlanes[0].constant = contactY;
+
+
+
+
+
+            // 1. Penumbra Volume Geometry Update
+
+            // 1. Penumbra Volume
+            // Physics: Cone from ApexPenumbra to infinity (or ground).
+            // Here we define it from Apex to Ground.
+            // Apex = apexPenumbraY. Base Y = 0.
+            {
+                const h = apexPenumbraY; // Height from Apex to Ground (since Ground=0)
+                // Cone Mesh (Height 1). Scale Y to h.
+                // Position Y center: h/2.
+                // Radius at Base (Y=0): radiusPenumbraAtGround.
+                // Radius at Top (Y=h): 0.
+                // Standard Cone is Radius 1 at Base, Tip at Top.
+                // If we flip it?
+                // Standard Cone: Tip at +0.5, Base at -0.5.
+                // We want Tip at Apex (Y=h), Base at Ground (Y=0).
+                // Center Y = h/2.
+
+
+
+                // V8 Refinement: No Scale Offset needed with Clip Bias.
+                // Reset to exact radius to maintain physics correctness where possible.
+                penumbraVol.scale.set(radiusPenumbraAtGround, h, radiusPenumbraAtGround);
+                penumbraVol.position.set(0, h / 2, 0);
+            }
+
+            // 2. Umbra Volume
+            // Physics: Cone from ApexUmbra to Moon? Or Apex to Ground?
+            // "Umbra" is the shadow cone BEHIND the moon.
+            // Start: Moon (Y=Y_m, Radius=R_m). End: Apex (Y=apexUmbraY, Radius=0).
+            {
+                const h = Y_m - apexUmbraY;
+                // If h < 0 (Antumbra situation), the cone should flip?
+                // Let's handle logical Umbra (valid between Moon and Apex).
+                if (h > 0) {
+                    umbraVol.visible = true;
+                    // Tip at Apex (bottom), Base at Moon (top).
+                    // Standard Cone: Tip +0.5, Base -0.5.
+                    // We want Tip at apexUmbraY, Base at Y_m.
+                    // Distance = h.
+                    // Center = apexUmbraY + h/2.
+                    // But Standard Cone points UP (Tip > Base).
+                    // We want Base > Tip (Moon > Apex).
+                    // So Rotate X 180.
+
+                    umbraVol.rotation.x = Math.PI;
+
+                    // Now Tip is at -0.5, Base at +0.5 (local).
+                    // Scaled by h: Tip at -h/2, Base at +h/2.
+                    // Center = apexUmbraY + h/2.
+                    // Tip World = Center - h/2 = apexUmbraY. Correct.
+                    // Base World = Center + h/2 = apexUmbraY + h = Y_m. Correct.
+                    // Radius at base: R_m.
+
+                    umbraVol.scale.set(R_m, h, R_m);
+                    umbraVol.position.set(0, apexUmbraY + h / 2, 0);
+
+                } else {
+                    // Antumbra case (Apex is above Moon? No, Apex is below Ground usually).
+                    // If h < 0, it means Apex > Moon??
+                    // Usually Apex < Moon.
+                    // For Annular, Apex is POSITIVE but below Moon. h > 0.
+                    // If Apex is NEGATIVE (Total), h > 0.
+                    // So h is always positive for the Moon-Apex cone.
+                    // Wait, in Annular, the Apex is the point where the cone ENDS (tip). 
+                    // Below that is Antumbra.
+                    // So this logic draws the "True Umbra" cone.
+                    // Valid.
+
+                    umbraVol.rotation.x = Math.PI;
+                    umbraVol.scale.set(R_m, h, R_m);
+                    umbraVol.position.set(0, apexUmbraY + h / 2, 0);
+                }
+            }
 
             // --- Draw Penumbra (Gradient) ---
             if (radiusPenumbraAtGround > 0) {
@@ -504,8 +731,13 @@
             });
         });
 
+
+
+        document.getElementById('chkLines').addEventListener('change', (e) => {
+            linesMesh.visible = e.target.checked;
+        });
+
         document.getElementById('btnPlay').onclick = () => { state.isPlaying = true; };
-        document.getElementById('btnPause').onclick = () => { state.isPlaying = false; };
         document.getElementById('btnReset').onclick = () => {
             state.isPlaying = false;
             state.observerPos.set(30, 0, 0);
@@ -514,9 +746,13 @@
 
         function updateMode() {
             if (state.mode === 'total') {
-                moonMesh.scale.set(config.moonRadiusTotal, config.moonRadiusTotal, config.moonRadiusTotal);
+                const s = config.moonRadiusTotal;
+                moonLit.scale.set(s, s, s);
+                moonDark.scale.set(s, s, s);
             } else {
-                moonMesh.scale.set(config.moonRadiusAnnular, config.moonRadiusAnnular, config.moonRadiusAnnular);
+                const s = config.moonRadiusAnnular;
+                moonLit.scale.set(s, s, s);
+                moonDark.scale.set(s, s, s);
             }
             updateShadows();
             updateObserver();
@@ -730,7 +966,8 @@
                 "legUmbra": "Umbra (Total)",
                 "legPenumbra": "Penumbra (Partial)",
                 "legObserver": "Observer",
-                "instruction": "Drag the <b>Red Dot</b> in the 3D view to move the observer."
+                "instruction": "Drag the <b>Red Dot</b> in the 3D view to move the observer.",
+                "showLines": "Show Helper Lines"
             },
             "zh-TW": {
                 "obsViewTitle": "觀察者視角 (模擬天空)",
@@ -746,7 +983,8 @@
                 "legUmbra": "本影區 (全蝕)",
                 "legPenumbra": "半影區 (偏蝕)",
                 "legObserver": "觀察者",
-                "instruction": "拖曳 3D 視圖中的 <b>紅點</b> 來移動觀察者。"
+                "instruction": "拖曳 3D 視圖中的 <b>紅點</b> 來移動觀察者。",
+                "showLines": "顯示輔助光線"
             }
         };
 
